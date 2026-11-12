@@ -1,13 +1,9 @@
-// Живой фон: цветные квадратики медленно всплывают и вращаются, иногда вспыхивает салют.
+// Живой фон: цветные квадратики медленно всплывают и вращаются.
 // Холст на всё окно, плотность пикселей не выше 1,5 — чтобы не грузить телефон.
 import { toneOf } from './palette';
 
 interface Bit {
   x: number; y: number; size: number; speed: number; rot: number; vr: number; color: string; alpha: number;
-}
-
-interface Spark {
-  x: number; y: number; vx: number; vy: number; life: number; max: number; color: string;
 }
 
 export function startBackdrop(canvas: HTMLCanvasElement): void {
@@ -16,7 +12,6 @@ export function startBackdrop(canvas: HTMLCanvasElement): void {
   let h = 0;
   let dpr = 1;
   const bits: Bit[] = [];
-  const sparks: Spark[] = [];
   const color = () => toneOf(1 + Math.floor(Math.random() * 8)).base;
 
   const resize = () => {
@@ -38,7 +33,6 @@ export function startBackdrop(canvas: HTMLCanvasElement): void {
   window.addEventListener('resize', resize);
 
   let last = 0;
-  let nextBurst = 1500;
   const frame = (now: number) => {
     requestAnimationFrame(frame);
     if (document.hidden) return;
@@ -62,32 +56,6 @@ export function startBackdrop(canvas: HTMLCanvasElement): void {
       ctx.roundRect(-b.size / 2, -b.size / 2, b.size, b.size, b.size * 0.22);
       ctx.fill();
       ctx.restore();
-    }
-    nextBurst -= dt;
-    if (nextBurst <= 0) {
-      nextBurst = 2600 + Math.random() * 3200;
-      const x = w * (0.1 + Math.random() * 0.8);
-      const y = h * (0.08 + Math.random() * 0.4);
-      const c = color();
-      for (let i = 0; i < 22; i++) {
-        const a = (i / 22) * Math.PI * 2;
-        const sp = 0.05 + Math.random() * 0.06;
-        sparks.push({ x, y, vx: Math.cos(a) * sp, vy: Math.sin(a) * sp, life: 0, max: 900 + Math.random() * 400, color: c });
-      }
-    }
-    for (let i = sparks.length - 1; i >= 0; i--) {
-      const s = sparks[i];
-      s.life += dt;
-      if (s.life >= s.max) {
-        sparks.splice(i, 1);
-        continue;
-      }
-      s.vy += 0.00005 * dt;
-      s.x += s.vx * dt;
-      s.y += s.vy * dt;
-      ctx.globalAlpha = (1 - s.life / s.max) * 0.5;
-      ctx.fillStyle = s.color;
-      ctx.fillRect(s.x - 2, s.y - 2, 4, 4);
     }
     ctx.globalAlpha = 1;
   };

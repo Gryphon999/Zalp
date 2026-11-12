@@ -1,8 +1,8 @@
 // Цвета блоков и пушек. Номер цвета — позиция буквы в core/arts.ts (LETTERS).
 import { STONE } from '../core/game';
 
-const BASE = ['', '#ff4d5e', '#ff9a3d', '#ffd23f', '#4cd471', '#2fd0d8', '#4a8dff', '#a66bff', '#ff7ac0', '#f4f1ff', '#b9773f', '#6b6690'];
-const STONE_COLOR = '#8a8799';
+const BASE = ['', '#ff4d5e', '#ff9a3d', '#ffd23f', '#4cd471', '#2fd0d8', '#4a8dff', '#a66bff', '#ff7ac0', '#f4f1ff', '#b9773f', '#48437a'];
+const STONE_COLOR = '#b9ad9c';
 
 function shade(hex: string, k: number): string {
   const n = parseInt(hex.slice(1), 16);

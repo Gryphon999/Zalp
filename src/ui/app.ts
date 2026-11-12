@@ -35,13 +35,15 @@ export class App {
   private timer = 0;
   private lastAd = Date.now();
   private titleTaps = 0;
-  private readonly test = new URLSearchParams(location.search).has('test');
+  /** ?test=1 — ускоренная автоматическая проверка, ?test=slow — те же крючки на обычной скорости. */
+  private readonly test = new URLSearchParams(location.search).get('test');
 
   constructor(private readonly root: HTMLElement, private readonly platform: Platform, private readonly save: Save) {
     setSound(save.sound);
     if (this.test) {
       const w = window as unknown as Record<string, unknown>;
       w.__bot = () => this.stage?.botStep() ?? 'nostage';
+      w.__stage = () => this.stage;
     }
     if (save.unlocked === 0 && !save.stars['0']) this.play({ kind: 'level', index: 0 });
     else this.menu();
@@ -118,7 +120,7 @@ export class App {
     const screen = h('div', { class: 'screen menu' },
       h('div', { class: 'top' }, h('span', { class: 'chip stars-chip' }, icon('star'), h('span', { text: String(totalStars(s)) })), h('span', { class: 'grow' }), this.soundButton()),
       h('div', { class: 'hero' },
-        h('div', { class: 'frame' }, pictureCanvas(def.picture, def.w, def.h, 132)),
+        h('div', { class: 'frame' }, pictureCanvas(def.picture, def.w, def.h, window.innerHeight >= 760 ? 176 : 132)),
         title,
         h('p', { text: 'Расстреляй картину цветными залпами' }),
       ),
@@ -178,7 +180,7 @@ export class App {
           this.play({ kind: 'level', index: i });
         });
       } else {
-        b.append(icon('lock'));
+        b.append(h('b', { text: String(i + 1) }), icon('lock'));
         b.disabled = true;
         b.setAttribute('aria-label', `Уровень ${i + 1} закрыт`);
       }
@@ -216,7 +218,7 @@ export class App {
         tile('grid', `${done} из ${LEVELS}`, 'уровней пройдено'),
         tile('star', String(totalStars(s)), 'звёзд собрано'),
         tile('clock', s.bestDaily ? formatTime(s.bestDaily) : '—', 'лучшее время картины дня'),
-        tile('flame', `${s.bestStreak}`, `${daysWord(s.bestStreak)} подряд: лучшая серия`),
+        tile('flame', String(s.bestStreak), 'лучшая серия дней подряд'),
       ),
       h('h3', { text: 'Картины дня' }),
       list,
@@ -301,7 +303,7 @@ export class App {
     this.show(screen);
 
     this.stage = new Stage(canvas, def, {
-      fast: this.test,
+      fast: this.test === '1',
       guide,
       hooks: {
         onProgress: setHud,
@@ -364,7 +366,10 @@ export class App {
     }
     setTimeout(() => play('star'), 250);
     const last = i + 1 >= LEVELS;
+    let going = false;
     const next = async () => {
+      if (going) return; // второе нажатие, пока идёт реклама, не должно запускать уровень дважды
+      going = true;
       play('tap');
       if (i >= AD_FROM_LEVEL && Date.now() - this.lastAd > AD_GAP_MS) {
         this.lastAd = Date.now();
@@ -406,7 +411,7 @@ export class App {
     const m = this.modal(
       h('h2', { text: by === 'stuck' ? 'Тупик' : 'Лоток переполнен' }),
       h('p', { text }),
-      rescued ? null : btn('primary wide rescue', 'Ещё одно место в лотке', 'film', () => {
+      rescued ? null : btn('primary wide rescue', 'Ещё место в лотке', 'film', () => {
         void this.platform.showRewarded().then((ok) => {
           if (!ok || !this.stage) return;
           markRescued();
@@ -440,7 +445,7 @@ export class App {
     const screen = h('div', { class: 'screen result' },
       this.top('Картина дня', null, () => this.menu()),
       h('div', { class: 'result-card' },
-        h('div', { class: 'frame' }, pictureCanvas(def.picture, def.w, def.h, 150)),
+        h('div', { class: 'frame' }, pictureCanvas(def.picture, def.w, def.h, window.innerHeight >= 760 ? 220 : 150)),
         h('h3', { text: `№ ${this.dayNo(rec.day)} · «${def.name}»` }),
         h('div', { class: 'big-time', text: time }),
         h('p', { text: rec.peak === 0 ? 'Лоток не понадобился!' : `Мест лотка занято: ${rec.peak}` }),

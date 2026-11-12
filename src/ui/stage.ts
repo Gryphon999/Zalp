@@ -90,6 +90,9 @@ export class Stage {
   private readonly ghosts = new Map<number, { color: number; t: number }>();
   private combo = 0;
   private comboAt = -9999;
+  /** Последняя «круглая» серия (10, 20, 30…) и момент, когда она случилась: её показываем крупно. */
+  private comboMark = 0;
+  private comboMarkAt = -9999;
   private shakeT = 0;
   private hintMove: Move | null = null;
   private hintUntil = 0;
@@ -156,8 +159,9 @@ export class Stage {
     this.canvas.height = Math.round(this.H * this.dpr);
     const { w, h } = this.game;
     const trayH = 62;
-    const queueH = Math.max(112, Math.min(178, this.H * 0.27));
-    const boardH = this.H - trayH - queueH;
+    // Сначала считаем картину под самый тесный случай (очереди занимают минимум места),
+    // потом лишнюю высоту делим: часть сверху, остальное — очередям, чтобы было видно больше пушек.
+    const boardH = this.H - trayH - 112;
     let R = 12;
     let u = 20;
     for (let i = 0; i < 3; i++) {
@@ -167,14 +171,17 @@ export class Stage {
     this.u = u;
     this.R = R;
     this.m = R + 6;
+    const need = h * u + 2 * (this.m + R) + 10;
+    const top = Math.max(0, boardH - need) * 0.35;
+    const bottom = top + need;
     this.bx = (this.W - w * u) / 2;
-    this.by = (boardH - h * u) / 2;
-    this.trayY = boardH + trayH / 2;
+    this.by = top + (need - h * u) / 2;
+    this.trayY = bottom + trayH / 2;
     this.slot = Math.min(50, (this.W - 20) / this.game.tray.length - 6);
     const k = this.game.cols.length;
     this.colW = Math.min(96, (this.W - 12) / k);
     this.RF = Math.min(28, this.colW / 2 - 7);
-    this.frontY = boardH + trayH + this.RF + 8;
+    this.frontY = bottom + trayH + this.RF + 8;
   }
 
   private station(p: number): Pt {
@@ -304,6 +311,10 @@ export class Stage {
         if (v) v.kick = this.R * 0.45;
         this.combo = this.age - this.comboAt < 900 ? this.combo + 1 : 1;
         this.comboAt = this.age;
+        if (this.combo % 10 === 0) {
+          this.comboMark = this.combo;
+          this.comboMarkAt = this.age;
+        }
         shot(this.combo);
       } else if (e.t === 'crumble') {
         this.ghosts.set(e.cell, { color: STONE, t: fast ? 4 : 220 });
@@ -545,6 +556,24 @@ export class Stage {
     ctx.closePath();
     ctx.stroke();
     ctx.setLineDash([]);
+    // стрелки направления посередине каждой стороны
+    ctx.fillStyle = 'rgba(255,255,255,.34)';
+    const a = Math.max(4, R * 0.42);
+    const marks: [number, number, number][] = [
+      [x + tw / 2, y + th, Math.PI], [x, y + th / 2, -Math.PI / 2], [x + tw / 2, y, 0], [x + tw, y + th / 2, Math.PI / 2],
+    ];
+    for (const [mx, my, rot] of marks) {
+      ctx.save();
+      ctx.translate(mx, my);
+      ctx.rotate(rot);
+      ctx.beginPath();
+      ctx.moveTo(a, 0);
+      ctx.lineTo(-a * 0.7, -a * 0.8);
+      ctx.lineTo(-a * 0.7, a * 0.8);
+      ctx.closePath();
+      ctx.fill();
+      ctx.restore();
+    }
   }
 
   private drawBlock(px: number, py: number, s: number, tone: Tone, stone: boolean): void {
@@ -724,12 +753,12 @@ export class Stage {
   }
 
   private drawCombo(): void {
-    const since = this.age - this.comboAt;
-    if (this.combo < 5 || since > 1100) return;
+    const since = this.age - this.comboMarkAt;
+    if (since > 1100) return;
     const { ctx } = this;
     const pop = Math.min(1, since / 120);
-    const size = Math.min(54, 26 + this.combo * 0.8) * (1.25 - 0.25 * pop);
-    ctx.globalAlpha = Math.min(1, (1100 - since) / 400);
+    const size = Math.min(44, 26 + this.comboMark * 0.3) * (1.3 - 0.3 * pop);
+    ctx.globalAlpha = Math.min(0.92, (1100 - since) / 400);
     ctx.font = `900 ${size}px system-ui, sans-serif`;
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
@@ -737,9 +766,9 @@ export class Stage {
     const y = this.by + this.game.h * this.u * 0.5;
     ctx.lineWidth = 6;
     ctx.strokeStyle = 'rgba(30,12,80,.75)';
-    ctx.strokeText(`×${this.combo}`, x, y);
+    ctx.strokeText(`×${this.comboMark}`, x, y);
     ctx.fillStyle = '#ffd23f';
-    ctx.fillText(`×${this.combo}`, x, y);
+    ctx.fillText(`×${this.comboMark}`, x, y);
     ctx.globalAlpha = 1;
   }
 
@@ -761,7 +790,8 @@ export class Stage {
     const s = 2;
     const bob = Math.abs(Math.sin(this.age / 260)) * 9;
     ctx.save();
-    ctx.translate(p.x - 9 * s + 4, p.y + 6 + bob);
+    const pr = m.from === 'col' ? this.RF : this.slot * 0.4;
+    ctx.translate(p.x - 9 * s + pr * 0.45, p.y + pr * 0.5 + bob);
     ctx.scale(s, s);
     ctx.fillStyle = '#fff';
     ctx.strokeStyle = '#2a1846';

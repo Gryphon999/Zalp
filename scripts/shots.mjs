@@ -88,23 +88,27 @@ async function run(name, viewport) {
   await page.waitForSelector('canvas.stage');
   await page.waitForTimeout(500);
   await shot('08-level-16-stones');
+  // Нарочно забиваем лоток и запускаем пушку, которой не хватит блоков: она вернётся, а места нет.
+  const k = await page.evaluate(() => {
+    const g = window.__stage().game;
+    g.tray = g.tray.map((t, i) => t ?? { id: 900 + i, color: 7, ammo: 2, hidden: false });
+    g.cols[0][0].ammo = 99;
+    return g.cols.length;
+  });
+  await page.waitForTimeout(200);
   const box = await page.locator('canvas.stage').boundingBox();
-  // Жмём по передним пушкам всех колонок по кругу, пока не проиграем или не выиграем.
-  let lost = false;
-  for (let i = 0; i < 400 && !lost; i++) {
-    for (const dx of [-144, -96, -48, 0, 48, 96, 144]) {
-      await page.mouse.click(box.x + box.width / 2 + dx, box.y + box.height - Math.max(112, Math.min(178, box.height * 0.27)) + 36);
-    }
-    await page.waitForTimeout(20);
-    lost = (await page.locator('.modal').count()) > 0;
-  }
-  await page.waitForTimeout(400);
-  await shot('09-end-of-careless-play');
-  if (await page.locator('.modal .rescue').count()) {
-    await page.locator('.modal .rescue').click();
-    await page.waitForTimeout(300);
-    await shot('10-rescued');
-  }
+  const front = await page.evaluate(() => {
+    const st = window.__stage();
+    return { x: st.frontPos(0).x, y: st.frontPos(0).y };
+  });
+  await page.mouse.click(box.x + front.x, box.y + front.y);
+  await page.waitForSelector('.modal .rescue');
+  await page.waitForTimeout(500);
+  await shot('09-lost');
+  await page.locator('.modal .rescue').click();
+  await page.waitForTimeout(300);
+  if (k < 3) throw new Error('мало колонок');
+  await shot('10-rescued');
   await page.goto(URL + '?test=1');
   await page.waitForSelector('.menu');
 
