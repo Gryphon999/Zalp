@@ -103,7 +103,8 @@ export class Stage {
     this.game = newGame(def.w, def.h, def.grid, def.cols);
     this.ctx = canvas.getContext('2d')!;
     // Круг по дорожке занимает около 4,5 секунды на любом размере картины.
-    this.tickMs = opt.fast ? 6 : Math.max(55, Math.min(130, 4500 / stations(def.w, def.h)));
+    // В обучении пушки едут быстрее: игрок ждёт каждый круг, урок не должен тянуться.
+    this.tickMs = opt.fast ? 6 : Math.max(55, Math.min(130, 4500 / stations(def.w, def.h))) * (opt.guide ? 0.6 : 1);
     this.ro = new ResizeObserver(() => this.layout());
     this.ro.observe(canvas);
     canvas.addEventListener('pointerdown', this.onDown);

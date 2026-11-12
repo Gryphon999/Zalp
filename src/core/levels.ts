@@ -183,7 +183,7 @@ export function makeLevel(i: number): LevelDef {
   const intro: Intro = i === 0 ? 'first' : i === 1 ? 'second' : i === 2 ? 'third' : i === HIDDEN_FROM ? 'hidden' : i === STONE_FROM ? 'stone' : null;
   const stonesOn = i === STONE_FROM || (i > STONE_FROM && i % 2 === 1);
   const def = build(pic, i + 1, {
-    merge: i === 0 ? 0 : i === 1 ? 0.5 : 0.2 + 0.5 * t,
+    merge: i === 0 ? 0.9 : i === 1 ? 0.5 : 0.2 + 0.5 * t,
     swap: i < 2 ? 0 : 0.15 + 0.45 * t,
     hidden: i < HIDDEN_FROM ? 0 : i === HIDDEN_FROM ? 0.3 : 0.12 + 0.2 * t,
     stones: stonesOn ? Math.max(3, Math.round(blocks * (0.02 + 0.03 * t))) : 0,
